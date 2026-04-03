@@ -96,20 +96,20 @@ If gaps found → send back to designer for revision before proceeding.
 
 ---
 
-### Step 6 — Developer → Implementation (model: opus)
-Invoke the **developer** subagent to implement using the approved plan and test scenarios:
-- **TDD strictly:** write failing tests first (RED), then implement (GREEN), then refactor
-- Tests must map 1:1 to the approved test scenarios from Steps 4–5
-- Follow the plan exactly — no improvisation
-- Fresh session: `claude --model opus --permission-mode bypassPermissions`
+### Step 6 — Test Implementation Verification
+Invoke the **test-implementation** subagent to verify:
+- Every approved test scenario from Steps 4–5 has a corresponding test
+- Tests are correct (right assertions, right coverage)
+- If any scenario is missing or wrong → fix before proceeding
 
 ---
 
-### Step 7 — Test Implementation Verification
-Invoke the **test-implementation** subagent to verify:
-- Every approved test scenario from Step 4 has a corresponding test
-- Tests are correct (right assertions, right coverage)
-- If any scenario is missing or wrong → fix before proceeding
+### Step 7 — Developer → Implementation (model: opus)
+Invoke the **developer** subagent to implement using the approved plan and verified test scenarios:
+- **TDD strictly:** write failing tests first (RED), then implement (GREEN), then refactor
+- Tests must map 1:1 to the approved test scenarios
+- Follow the plan exactly — no improvisation
+- Fresh session: `claude --model opus --permission-mode bypassPermissions`
 
 ---
 
@@ -125,7 +125,21 @@ Both reviews are focused on:
 4. **Visible bugs** — off-by-one, null handling, race conditions, incorrect calculations
 
 Security and conventions are secondary — surface them but don't block on style.
-If either reviewer finds a blocker → fix before proceeding.
+
+---
+
+### Step 8b — Review Triage
+Invoke the **review-triager** subagent to consolidate findings from both code reviewers:
+- For each finding: is it **valid and relevant**? (genuine issue vs. noise/style preference)
+- Classify as: `blocker` | `improvement` | `nitpick` | `invalid`
+- Produce a prioritized action list of issues worth fixing
+
+---
+
+### Step 8c — Fix Issues (model: opus)
+Invoke the **developer** subagent to fix all `blocker` and `improvement` findings from the triage:
+- Fix each issue exactly as identified — no scope creep
+- Re-run tests after fixes to confirm nothing regressed
 
 ---
 
@@ -154,6 +168,7 @@ Invoke the **documentation** subagent to:
 | `test-scenario-reviewer` | Validating test plan completeness and correctness |
 | `test-implementation` | Writing or verifying tests against approved scenarios |
 | `code-reviewer` | After implementation (2x in parallel: opus, minimax) |
+| `review-triager` | Consolidate code review findings, classify relevance, produce action list |
 | `documentation` | XML docs, ADRs, README updates |
 
 ---
@@ -236,4 +251,4 @@ Rules:
 
 ---
 
-_v1.2 — 2026-04-03_
+_v1.3 — 2026-04-03_
