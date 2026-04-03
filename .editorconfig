@@ -1,0 +1,16 @@
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+charset = utf-8-bom
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.cs]
+dotnet_sort_system_directives_first = true
+csharp_using_directive_placement = outside_namespace
+csharp_prefer_simple_using_statement = true
+csharp_style_namespace_declarations = file_scoped:warning
+dotnet_style_prefer_auto_properties = true:warning
