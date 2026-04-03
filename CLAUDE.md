@@ -38,6 +38,52 @@ tests/
 
 ---
 
+## Agent Workflow (mandatory for every task)
+
+Every GitHub issue is implemented using this exact workflow. No shortcuts.
+
+### 1. Architect → Plan
+Invoke the **architect** subagent to produce a written plan (no code):
+- Files to create/modify
+- Key implementation decisions
+- Risks and open questions
+
+```
+Use the architect agent. Produce an implementation plan (NO code) for: [task description]
+```
+
+### 2. Human approves the plan
+**Wait for explicit approval before proceeding.**
+Do not implement until the human says "schváleno", "implementuj", "approve", or similar.
+
+### 3. Developer → Implementation (new session, model: opus)
+Invoke the **developer** subagent to implement the approved plan:
+- TDD: write tests first (RED), then implement (GREEN)
+- Follow the plan exactly — no improvisation
+- Each task in a fresh `claude --model opus --permission-mode bypassPermissions` session
+
+### 4. Code Reviewer → Review
+After implementation, invoke the **code-reviewer** subagent:
+- Review changed files for security, architecture, conventions, performance
+- Report blockers before closing the issue
+
+### 5. Close issue + continue
+- Close the GitHub issue
+- Present plan for the next task
+
+### Agents available (in `.claude/agents/`)
+| Agent | When to use |
+|-------|-------------|
+| `orchestrator` | Starting a new feature with multiple subtasks |
+| `architect` | Design, API contracts, data models — before any code |
+| `developer` | Implementation after plan is approved |
+| `code-reviewer` | After implementation, before PR/issue close |
+| `test-scenario-designer` | Test plan before writing tests |
+| `test-implementation` | Writing the actual tests |
+| `documentation` | XML docs, ADRs, README updates |
+
+---
+
 ## Development Rules
 
 ### TDD (mandatory)
