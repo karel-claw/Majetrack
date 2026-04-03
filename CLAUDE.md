@@ -8,7 +8,7 @@ _Portfolio tracking application._
 
 - **.NET 10** (latest stable)
 - Minimal APIs
-- PostgreSQL + Dapper
+- PostgreSQL + **EF Core** (latest stable)
 - FluentValidation
 
 ---
@@ -80,6 +80,7 @@ chore: Update dependencies to latest
 - ❌ Pin versions without a reason
 - ❌ Write code without tests
 - ❌ Guess how something works — look it up
+- ❌ Use `#region` — ever
 
 ---
 
