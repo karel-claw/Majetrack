@@ -1,3 +1,4 @@
+using Majetrack.Api.Infrastructure;
 using Majetrack.Features;
 using Majetrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 // OpenAPI / Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Problem Details and Exception Handling
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 // Database
 builder.Services.AddDbContext<MajetrackDbContext>(options =>
@@ -23,6 +28,9 @@ builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+// Global exception handler - must be first middleware to catch all downstream exceptions
+app.UseExceptionHandler();
 
 // Development middleware
 if (app.Environment.IsDevelopment())
