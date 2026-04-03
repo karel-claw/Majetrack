@@ -75,12 +75,44 @@ chore: Update dependencies to latest
 
 ---
 
+## Documentation (mandatory)
+
+Every class, method, and property must have an XML doc comment in English.
+
+```csharp
+/// <summary>
+/// Represents a financial transaction recorded by the user.
+/// </summary>
+public class Transaction { ... }
+
+/// <summary>
+/// The total amount of the transaction in the original currency, including fees.
+/// Stored with precision 18,2.
+/// </summary>
+public decimal TotalAmount { get; set; }
+
+/// <summary>
+/// Calculates the net gain/loss for this transaction using FIFO cost basis.
+/// Returns null if position has not been fully resolved yet.
+/// </summary>
+public decimal? CalculateRealizedPnl() { ... }
+```
+
+Rules:
+- `<summary>` on every `public` and `internal` type and member — no exceptions
+- Explain **what it is/does AND why it exists** — not just repeat the name
+- When modifying existing code: **review and update the doc comment** to reflect the change
+- Use `<param>`, `<returns>`, `<remarks>` where they add clarity
+- Do NOT write obvious filler like `/// <summary>Gets the Id.</summary>`
+
 ## What Not To Do
 
 - ❌ Pin versions without a reason
 - ❌ Write code without tests
 - ❌ Guess how something works — look it up
 - ❌ Use `#region` — ever
+- ❌ Add code without XML doc comments
+- ❌ Leave stale doc comments after modifying code
 
 ---
 
