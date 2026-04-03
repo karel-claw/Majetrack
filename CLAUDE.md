@@ -42,44 +42,118 @@ tests/
 
 Every GitHub issue is implemented using this exact workflow. No shortcuts.
 
-### 1. Architect → Plan
+---
+
+### Step 1 — Architect → Plan
 Invoke the **architect** subagent to produce a written plan (no code):
 - Files to create/modify
 - Key implementation decisions
+- API contracts, data model changes
 - Risks and open questions
 
-```
-Use the architect agent. Produce an implementation plan (NO code) for: [task description]
-```
+---
 
-### 2. Human approves the plan
+### Step 2 — Plan Review (3 independent agents, run in parallel)
+Invoke three **plan-reviewer** agents simultaneously, each with a different model:
+- **opus** — deep reasoning, architectural correctness
+- **sonnet** — balance of speed and quality
+- **minimax-m2.5** — independent perspective, alternative approaches
+
+Each reviewer must answer:
+1. Does the plan make sense?
+2. Are there simpler or better alternatives?
+3. Any risks or gaps the architect missed?
+
+Consolidate findings. If blockers found → send back to architect for revision.
+
+---
+
+### Step 3 — Human approves the plan
 **Wait for explicit approval before proceeding.**
 Do not implement until the human says "schváleno", "implementuj", "approve", or similar.
+Present a short summary of what each reviewer noted.
 
-### 3. Developer → Implementation (new session, model: opus)
-Invoke the **developer** subagent to implement the approved plan:
-- TDD: write tests first (RED), then implement (GREEN)
+---
+
+### Step 4 — Test Scenario Design
+Invoke the **test-scenario-designer** subagent to produce a full test plan:
+- **Happy path** — standard usage, multiple input variations
+- **Edge cases** — boundary values, empty collections, zero amounts, max precision
+- **Validation** — invalid inputs, missing required fields, constraint violations
+- **Error paths** — DB failures, external service errors, concurrency conflicts
+
+Output: structured list of named test cases (no code yet).
+
+---
+
+### Step 5 — Test Scenario Validation
+Invoke an independent **test-scenario-reviewer** subagent to validate the test plan:
+- Are all scenarios necessary and well-defined?
+- Are there missing cases (negative tests, auth, concurrency)?
+- Are the expected outcomes correct?
+
+If gaps found → send back to designer for revision before proceeding.
+
+---
+
+### Step 6 — Developer → Implementation (model: opus)
+Invoke the **developer** subagent to implement using the approved plan and test scenarios:
+- **TDD strictly:** write failing tests first (RED), then implement (GREEN), then refactor
+- Tests must map 1:1 to the approved test scenarios from Steps 4–5
 - Follow the plan exactly — no improvisation
-- Each task in a fresh `claude --model opus --permission-mode bypassPermissions` session
+- Fresh session: `claude --model opus --permission-mode bypassPermissions`
 
-### 4. Code Reviewer → Review
-After implementation, invoke the **code-reviewer** subagent:
-- Review changed files for security, architecture, conventions, performance
-- Report blockers before closing the issue
+---
 
-### 5. Close issue + continue
+### Step 7 — Test Implementation Verification
+Invoke the **test-implementation** subagent to verify:
+- Every approved test scenario from Step 4 has a corresponding test
+- Tests are correct (right assertions, right coverage)
+- If any scenario is missing or wrong → fix before proceeding
+
+---
+
+### Step 8 — Code Review (2 independent agents, run in parallel)
+Invoke two **code-reviewer** agents simultaneously:
+- **opus**
+- **minimax-m2.5**
+
+Both reviews are focused on:
+1. **Does the implementation make sense?** — logic correctness, alignment with plan
+2. **Efficiency and readability** — could it be written more cleanly or simply?
+3. **Performance issues** — N+1 queries, unnecessary allocations, blocking I/O
+4. **Visible bugs** — off-by-one, null handling, race conditions, incorrect calculations
+
+Security and conventions are secondary — surface them but don't block on style.
+If either reviewer finds a blocker → fix before proceeding.
+
+---
+
+### Step 9 — Documentation
+Invoke the **documentation** subagent to:
+- Add or update XML doc comments on all changed/new public and internal members
+- Update ADR if an architectural decision was made
+- Update README if public-facing behavior changed
+
+---
+
+### Step 10 — Close issue + continue
 - Close the GitHub issue
 - Present plan for the next task
+
+---
 
 ### Agents available (in `.claude/agents/`)
 | Agent | When to use |
 |-------|-------------|
 | `orchestrator` | Starting a new feature with multiple subtasks |
 | `architect` | Design, API contracts, data models — before any code |
-| `developer` | Implementation after plan is approved |
-| `code-reviewer` | After implementation, before PR/issue close |
-| `test-scenario-designer` | Test plan before writing tests |
-| `test-implementation` | Writing the actual tests |
+| `plan-reviewer` | Reviewing architect's plan (3x in parallel: opus, sonnet, minimax) |
+| `developer` | Implementation after plan is approved (opus) |
+| `test-scenario-designer` | Full test plan before writing any test code |
+| `test-scenario-reviewer` | Validating test plan completeness and correctness |
+| `test-implementation` | Writing or verifying tests against approved scenarios |
+| `code-reviewer` | After implementation (2x in parallel: opus, minimax) |
 | `documentation` | XML docs, ADRs, README updates |
 
 ---
@@ -162,4 +236,4 @@ Rules:
 
 ---
 
-_v1.1 — 2026-04-03_
+_v1.2 — 2026-04-03_
