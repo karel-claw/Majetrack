@@ -36,7 +36,7 @@ public static class ErrorOrEndpointExtensions
                 .ToDictionary(
                     g => g.Key,
                     g => g.Select(e => e.Description).ToArray());
-            return Results.ValidationProblem(dict);
+            return TypedResults.ValidationProblem(dict);
         }
 
         // First-error dispatch for all other types

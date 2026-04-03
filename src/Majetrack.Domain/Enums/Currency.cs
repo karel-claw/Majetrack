@@ -3,7 +3,7 @@ namespace Majetrack.Domain.Enums;
 /// <summary>
 /// Represents the supported currencies used for transactions, asset pricing,
 /// and portfolio valuation. Exchange rates between these currencies are stored
-/// for cross-currency reporting.
+/// for cross-currency reporting. Values follow ISO 4217 naming conventions.
 /// </summary>
 public enum Currency
 {
@@ -11,16 +11,16 @@ public enum Currency
     /// Czech koruna (CZK) — the primary reporting currency for the portfolio,
     /// as the user is based in the Czech Republic.
     /// </summary>
-    Czk = 1,
+    CZK = 1,
 
     /// <summary>
     /// Euro (EUR) — used for European-listed assets and platforms
     /// such as XTB European markets.
     /// </summary>
-    Eur = 2,
+    EUR = 2,
 
     /// <summary>
     /// United States dollar (USD) — used for US-listed equities and ETFs.
     /// </summary>
-    Usd = 3,
+    USD = 3,
 }
