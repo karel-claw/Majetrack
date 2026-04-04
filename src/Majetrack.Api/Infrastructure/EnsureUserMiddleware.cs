@@ -38,8 +38,17 @@ public class EnsureUserMiddleware
     }
 
     /// <summary>
+    /// Key used to store the resolved internal <see cref="User.Id"/> in
+    /// <see cref="HttpContext.Items"/> so downstream services can read it
+    /// without an additional database round-trip.
+    /// </summary>
+    public const string InternalUserIdKey = "Majetrack.InternalUserId";
+
+    /// <summary>
     /// Invokes the middleware. If the request is authenticated, ensures a local
     /// user record exists for the Entra identity, creating one if necessary.
+    /// The resolved internal <see cref="User.Id"/> is stored in
+    /// <see cref="HttpContext.Items"/> under <see cref="InternalUserIdKey"/>.
     /// </summary>
     /// <param name="context">The current HTTP context.</param>
     /// <param name="db">The database context (scoped per request via DI).</param>
@@ -57,7 +66,8 @@ public class EnsureUserMiddleware
             }
             else
             {
-                await EnsureUserExistsAsync(db, entraObjectId, context.User, context.RequestAborted);
+                var internalId = await EnsureUserExistsAsync(db, entraObjectId, context.User, context.RequestAborted);
+                context.Items[InternalUserIdKey] = internalId;
             }
         }
 
@@ -68,7 +78,8 @@ public class EnsureUserMiddleware
     /// Checks whether the user exists in the database and creates a new record if not.
     /// Updates <see cref="User.LastLoginAt"/> on every authenticated request.
     /// </summary>
-    private async Task EnsureUserExistsAsync(
+    /// <returns>The internal <see cref="User.Id"/> (either existing or newly created).</returns>
+    private async Task<Guid> EnsureUserExistsAsync(
         MajetrackDbContext db,
         string entraObjectId,
         ClaimsPrincipal principal,
@@ -103,6 +114,8 @@ public class EnsureUserMiddleware
         }
 
         await db.SaveChangesAsync(ct);
+
+        return user.Id;
     }
 
     // ── Claim extraction helpers ─────────────────────────────────────────────

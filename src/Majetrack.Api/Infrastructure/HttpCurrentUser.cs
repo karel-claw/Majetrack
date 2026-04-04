@@ -32,8 +32,19 @@ public sealed class HttpCurrentUser : ICurrentUser
     {
         get
         {
-            // Entra ID / Azure AD uses "oid" (object id) as the stable unique user claim.
-            // Fall back to the standard NameIdentifier claim for flexibility.
+            // Prefer the internal DB User.Id stored by EnsureUserMiddleware.
+            // This avoids confusing the Entra OID (external identity) with
+            // the application's own primary key.
+            var items = _httpContextAccessor.HttpContext?.Items;
+            if (items is not null
+                && items.TryGetValue(EnsureUserMiddleware.InternalUserIdKey, out var raw)
+                && raw is Guid internalId)
+            {
+                return internalId;
+            }
+
+            // Fallback: should not be reached for authenticated requests that
+            // passed through EnsureUserMiddleware, but kept for safety.
             var value = User?.FindFirstValue("oid")
                      ?? User?.FindFirstValue(ClaimTypes.NameIdentifier);
 

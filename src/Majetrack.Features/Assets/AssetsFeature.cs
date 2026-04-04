@@ -31,16 +31,12 @@ public class AssetsFeature : IFeatureConfiguration
     /// Currently exposes GET /api/assets for retrieving the asset catalogue.
     /// </summary>
     /// <param name="app">The endpoint route builder to map routes on.</param>
-    /// <remarks>
-    /// TODO T-07: Remove .AllowAnonymous() and add .RequireAuthorization() when Entra ID
-    ///            JWT bearer authentication is configured.
-    /// </remarks>
     public static void MapEndpoints(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/assets")
                        .WithTags("Assets");
 
         group.MapGet("", GetAssetsHandler.HandleAsync)
-             .AllowAnonymous();
+             .RequireAuthorization();
     }
 }

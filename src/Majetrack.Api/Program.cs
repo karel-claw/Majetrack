@@ -3,6 +3,7 @@ using Majetrack.Features;
 using Majetrack.Features.Shared.Services;
 using Majetrack.Infrastructure.ExternalServices.CnbExchangeRateProvider;
 using Majetrack.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
@@ -35,8 +36,13 @@ builder.Services.AddFeatures(builder.Configuration, featuresAssembly);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
-// Auth placeholders (ordering matters for middleware pipeline)
-builder.Services.AddAuthentication();
+// Authentication — JWT Bearer via Microsoft Entra ID
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = builder.Configuration["EntraAuth:Authority"];
+        options.Audience = builder.Configuration["EntraAuth:ClientId"];
+    });
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
