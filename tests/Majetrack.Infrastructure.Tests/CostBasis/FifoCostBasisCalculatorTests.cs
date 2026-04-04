@@ -112,4 +112,70 @@ public class FifoCostBasisCalculatorTests
         result.OpenLots[0].Quantity.Should().Be(7m);
         result.OpenLots[0].PricePerUnit.Should().Be(100m);
     }
+
+    // ── TC913: Oversell_ThrowsInvalidOperationException ──────────────────
+
+    [Fact]
+    public void TC913_Oversell_ThrowsInvalidOperationException()
+    {
+        // Arrange – buy 5, then attempt to sell 10 (more than available)
+        var buy = MakeBuy(new DateOnly(2024, 1, 1), 5m, 100m);
+        var sell = MakeSell(new DateOnly(2024, 2, 1), 10m, 150m);
+
+        var transactions = new[] { buy, sell };
+
+        // Act & Assert – oversell must throw
+        var act = () => FifoCostBasisCalculator.Calculate(transactions);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Oversell*");
+    }
+
+    // ── TC914: ZeroQuantityTransactions_AreHandledGracefully ─────────────
+
+    [Fact]
+    public void TC914_NoTransactions_ReturnsEmptyPosition()
+    {
+        // Arrange – empty transaction list (zero-quantity scenario: nothing to process)
+        var transactions = Array.Empty<Transaction>();
+
+        // Act
+        var result = FifoCostBasisCalculator.Calculate(transactions);
+
+        // Assert – result should represent an empty, zeroed position
+        result.TotalQuantity.Should().Be(0m);
+        result.TotalCostBasis.Should().Be(0m);
+        result.OpenLots.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TC914b_OnlyNonBuySellTransactions_ReturnsEmptyPosition()
+    {
+        // Arrange – transactions of types that are ignored (neither Buy nor Sell)
+        // This validates the "other types are ignored" contract and zero-quantity edge case.
+        var dividendOrFee = new Transaction
+        {
+            Id = Guid.NewGuid(),
+            UserId = UserId,
+            AssetId = AssetId,
+            TransactionType = TransactionType.Dividend,
+            TransactionDate = new DateOnly(2024, 1, 1),
+            Quantity = 0m,
+            PricePerUnit = 0m,
+            TotalAmount = 50m,
+            Currency = Currency.USD,
+            Platform = Platform.Xtb,
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+
+        var transactions = new[] { dividendOrFee };
+
+        // Act
+        var result = FifoCostBasisCalculator.Calculate(transactions);
+
+        // Assert – ignored transaction type → empty position
+        result.TotalQuantity.Should().Be(0m);
+        result.TotalCostBasis.Should().Be(0m);
+        result.OpenLots.Should().BeEmpty();
+    }
 }
