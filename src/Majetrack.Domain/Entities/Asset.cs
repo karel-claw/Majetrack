@@ -14,6 +14,12 @@ public class Asset
     public Guid Id { get; set; }
 
     /// <summary>
+    /// The identifier of the user who owns this asset.
+    /// Assets are user-scoped to enforce ownership isolation.
+    /// </summary>
+    public Guid UserId { get; set; }
+
+    /// <summary>
     /// The ticker or trading symbol of the asset (e.g. "AAPL", "VWCE.DE").
     /// Null for asset types that do not have a ticker, such as P2P loans.
     /// </summary>

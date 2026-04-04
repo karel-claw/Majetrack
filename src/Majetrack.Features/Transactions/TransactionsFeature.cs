@@ -1,3 +1,5 @@
+using FluentValidation;
+using Majetrack.Features.Transactions.Create;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -16,13 +18,17 @@ public class TransactionsFeature : IFeatureConfiguration
     /// <inheritdoc />
     public static void AddServices(IServiceCollection services, IConfiguration configuration)
     {
-        // Transaction-specific services will be registered here as endpoints are added.
+        services.AddScoped<IValidator<CreateTransactionRequest>, CreateTransactionValidator>();
+        services.AddScoped<CreateTransactionFeature>();
     }
 
     /// <inheritdoc />
     public static void MapEndpoints(IEndpointRouteBuilder app)
     {
-        app.MapGroup("/api/transactions")
-           .WithTags("Transactions");
+        var group = app.MapGroup("/api/transactions")
+                       .WithTags("Transactions");
+
+        group.MapPost("", CreateTransactionEndpoint.HandleAsync)
+             .RequireAuthorization();
     }
 }
