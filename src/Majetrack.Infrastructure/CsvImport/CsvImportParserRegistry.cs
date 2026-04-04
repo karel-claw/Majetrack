@@ -30,7 +30,7 @@ public sealed class CsvImportParserRegistry
             new XtbCsvImportParser(),
             new XtbTradingHistoryCsvImportParser(),
             new EtoroCsvImportParser(),
-            // Future parsers: new InvestownCsvImportParser()
+            new InvestownCsvImportParser(),
         };
 
         _parsers = parsers.ToDictionary(p => p.Platform);
