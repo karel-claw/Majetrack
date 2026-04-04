@@ -28,6 +28,7 @@ public sealed class CsvImportParserRegistry
         var parsers = new ICsvImportParser[]
         {
             new XtbCsvImportParser(),
+            new XtbTradingHistoryCsvImportParser(),
             // Future parsers: new EtoroCsvImportParser(), new InvestownCsvImportParser()
         };
 
