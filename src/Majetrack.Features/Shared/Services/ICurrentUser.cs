@@ -11,4 +11,15 @@ public interface ICurrentUser
     /// Returns <c>null</c> when the request is unauthenticated.
     /// </summary>
     Guid? UserId { get; }
+
+    /// <summary>
+    /// Gets the email address of the currently authenticated user.
+    /// Returns <c>null</c> when the request is unauthenticated or the claim is absent.
+    /// </summary>
+    string? Email { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the current request is authenticated.
+    /// </summary>
+    bool IsAuthenticated { get; }
 }

@@ -1,5 +1,6 @@
 using Majetrack.Api.Infrastructure;
 using Majetrack.Features;
+using Majetrack.Features.Shared.Services;
 using Majetrack.Infrastructure.ExternalServices.CnbExchangeRateProvider;
 using Majetrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,10 @@ builder.Services.AddHttpClient<IExchangeRateProvider, CnbExchangeRateProvider>()
 var featuresAssembly = typeof(IFeatureConfiguration).Assembly;
 builder.Services.AddFeatures(builder.Configuration, featuresAssembly);
 
+// Current user identity — resolves UserId / Email from JWT claims
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+
 // Auth placeholders (ordering matters for middleware pipeline)
 builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();
@@ -53,6 +58,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<EnsureUserMiddleware>();
 
 // Feature endpoints
 app.MapFeatures(featuresAssembly);
