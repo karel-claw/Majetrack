@@ -1,6 +1,6 @@
 {
   "ConnectionStrings": {
-    "MajetrackDb": "Host=localhost;Database=majetrack;Username=majetrack;Password=majetrack"
+    "MajetrackDb": "Host=localhost;Database=majetrack;Username=majetrack;Password=<your_password>"
   },
   "Logging": {
     "LogLevel": {
