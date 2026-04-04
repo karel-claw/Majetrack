@@ -4,6 +4,7 @@ using Majetrack.Domain.Entities;
 using Majetrack.Domain.Enums;
 using Majetrack.Features.Shared.Extensions;
 using Majetrack.Features.Shared.Services;
+using Majetrack.Infrastructure.ExternalServices.CnbExchangeRateProvider;
 using Majetrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,13 +12,14 @@ namespace Majetrack.Features.Transactions.Create;
 
 /// <summary>
 /// Orchestrates the creation of a new transaction. Validates the request,
-/// resolves and verifies asset ownership, and persists the transaction.
+/// resolves and verifies asset ownership, fetches FX rate if needed, and persists.
 /// </summary>
 public class CreateTransactionFeature
 {
     private readonly MajetrackDbContext _db;
     private readonly ICurrentUser _currentUser;
     private readonly IValidator<CreateTransactionRequest> _validator;
+    private readonly IExchangeRateProvider _fxProvider;
 
     /// <summary>
     /// Initializes a new instance of <see cref="CreateTransactionFeature"/>.
@@ -25,14 +27,17 @@ public class CreateTransactionFeature
     /// <param name="db">The database context for persistence.</param>
     /// <param name="currentUser">Provides the authenticated user's identity.</param>
     /// <param name="validator">The FluentValidation validator for the request.</param>
+    /// <param name="fxProvider">Provides exchange rate data for non-CZK transactions.</param>
     public CreateTransactionFeature(
         MajetrackDbContext db,
         ICurrentUser currentUser,
-        IValidator<CreateTransactionRequest> validator)
+        IValidator<CreateTransactionRequest> validator,
+        IExchangeRateProvider fxProvider)
     {
         _db = db;
         _currentUser = currentUser;
         _validator = validator;
+        _fxProvider = fxProvider;
     }
 
     /// <summary>
@@ -100,7 +105,26 @@ public class CreateTransactionFeature
             resolvedAssetId = asset.Id;
         }
 
-        // Step 4: Persist
+        // Step 4: Resolve FX rate (skip for CZK — it's the base currency)
+        decimal? fxRateToCzk = null;
+        if (currency != Currency.CZK)
+        {
+            try
+            {
+                fxRateToCzk = await _fxProvider.GetRateAsync(currency.ToString(), Currency.CZK.ToString(), ct);
+            }
+            catch
+            {
+                return TransactionErrors.FxRateUnavailable;
+            }
+
+            if (fxRateToCzk is null)
+            {
+                return TransactionErrors.FxRateUnavailable;
+            }
+        }
+
+        // Step 5: Persist
         var transaction = new Transaction
         {
             Id = Guid.NewGuid(),

@@ -5,6 +5,7 @@ using Majetrack.Domain.Entities;
 using Majetrack.Domain.Enums;
 using Majetrack.Features.Shared.Services;
 using Majetrack.Features.Transactions.Create;
+using Majetrack.Infrastructure.ExternalServices.CnbExchangeRateProvider;
 using Majetrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -14,12 +15,13 @@ namespace Majetrack.Features.Tests.Transactions;
 /// <summary>
 /// Unit tests for POST /api/transactions — CreateTransactionFeature.
 /// Covers happy paths, validation errors, authentication, asset resolution,
-/// and FX rate provider scenarios per the T-12 test scenario document.
+/// and FX rate provider scenarios per the T-12/T-14 test scenario document.
 /// </summary>
 public class CreateTransactionTests : IDisposable
 {
     private readonly MajetrackDbContext _db;
     private readonly Mock<ICurrentUser> _currentUserMock;
+    private readonly Mock<IExchangeRateProvider> _fxProviderMock;
     private readonly CreateTransactionValidator _validator;
     private readonly Guid _userId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     private readonly Guid _otherUserId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
@@ -37,6 +39,7 @@ public class CreateTransactionTests : IDisposable
         _db = new MajetrackDbContext(options);
         _currentUserMock = new Mock<ICurrentUser>();
         _currentUserMock.Setup(x => x.UserId).Returns(_userId);
+        _fxProviderMock = new Mock<IExchangeRateProvider>();
         _validator = new CreateTransactionValidator();
 
         // Seed an asset owned by _userId
@@ -78,7 +81,7 @@ public class CreateTransactionTests : IDisposable
     }
 
     private CreateTransactionFeature CreateFeature()
-        => new(_db, _currentUserMock.Object, _validator);
+        => new(_db, _currentUserMock.Object, _validator, _fxProviderMock.Object);
 
     private static CreateTransactionRequest ValidBuyRequest(Guid assetId) => new(
         TransactionType: "Buy",
@@ -113,6 +116,8 @@ public class CreateTransactionTests : IDisposable
     public async Task TC001_Buy_ReturnsCreatedWithTransactionId()
     {
         // Arrange
+        _fxProviderMock.Setup(x => x.GetRateAsync("USD", "CZK", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(23.1m);
         var feature = CreateFeature();
         var request = ValidBuyRequest(_assetId);
 
@@ -142,6 +147,8 @@ public class CreateTransactionTests : IDisposable
     public async Task TC002_Sell_ReturnsCreatedWithTransactionId()
     {
         // Arrange
+        _fxProviderMock.Setup(x => x.GetRateAsync("USD", "CZK", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(23.1m);
         var feature = CreateFeature();
         var request = new CreateTransactionRequest(
             TransactionType: "Sell",
@@ -254,6 +261,8 @@ public class CreateTransactionTests : IDisposable
     public async Task TC006_Dividend_ReturnsCreatedWithTransactionId()
     {
         // Arrange
+        _fxProviderMock.Setup(x => x.GetRateAsync("USD", "CZK", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(23.1m);
         var feature = CreateFeature();
         var request = new CreateTransactionRequest(
             TransactionType: "Dividend",
@@ -284,6 +293,8 @@ public class CreateTransactionTests : IDisposable
     public async Task TC007_FeeZero_DefaultsCorrectly()
     {
         // Arrange
+        _fxProviderMock.Setup(x => x.GetRateAsync("USD", "CZK", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(23.1m);
         var feature = CreateFeature();
         var request = new CreateTransactionRequest(
             TransactionType: "Buy",
@@ -798,6 +809,123 @@ public class CreateTransactionTests : IDisposable
 
     #endregion
 
+    #region TC201-211: FX Rate Provider
+
+    /// <summary>
+    /// TC201: CZK transaction — FX provider is NOT called, returns 201.
+    /// </summary>
+    [Fact]
+    public async Task TC201_CzkTransaction_NoFxCall_Returns201()
+    {
+        // Arrange
+        var feature = CreateFeature();
+        var request = ValidDepositRequest(); // CZK currency
+
+        // Act
+        var result = await feature.ExecuteAsync(request);
+
+        // Assert
+        result.IsError.Should().BeFalse();
+        result.Value.Should().NotBe(Guid.Empty);
+        _fxProviderMock.Verify(x => x.GetRateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    /// <summary>
+    /// TC202: EUR transaction — FX rate fetched, returns 201.
+    /// </summary>
+    [Fact]
+    public async Task TC202_EurTransaction_FxFetched_Returns201()
+    {
+        // Arrange
+        _fxProviderMock.Setup(x => x.GetRateAsync("EUR", "CZK", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(25.5m);
+        var feature = CreateFeature();
+        var request = new CreateTransactionRequest(
+            TransactionType: "Deposit",
+            TransactionDate: "2026-01-10",
+            TotalAmount: 1000.00m,
+            Currency: "EUR",
+            Platform: "Xtb",
+            AssetId: null,
+            Quantity: null,
+            PricePerUnit: null,
+            Fee: 0m,
+            Note: null);
+
+        // Act
+        var result = await feature.ExecuteAsync(request);
+
+        // Assert
+        result.IsError.Should().BeFalse();
+        result.Value.Should().NotBe(Guid.Empty);
+        _fxProviderMock.Verify(x => x.GetRateAsync("EUR", "CZK", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    /// <summary>
+    /// TC203: USD transaction — FX rate fetched, returns 201.
+    /// </summary>
+    [Fact]
+    public async Task TC203_UsdTransaction_FxFetched_Returns201()
+    {
+        // Arrange
+        _fxProviderMock.Setup(x => x.GetRateAsync("USD", "CZK", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(23.1m);
+        var feature = CreateFeature();
+        var request = ValidBuyRequest(_assetId); // USD currency
+
+        // Act
+        var result = await feature.ExecuteAsync(request);
+
+        // Assert
+        result.IsError.Should().BeFalse();
+        result.Value.Should().NotBe(Guid.Empty);
+        _fxProviderMock.Verify(x => x.GetRateAsync("USD", "CZK", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    /// <summary>
+    /// TC210: FX provider returns null (rate unavailable) — returns 502.
+    /// </summary>
+    [Fact]
+    public async Task TC210_FxUnavailable_Returns502()
+    {
+        // Arrange
+        _fxProviderMock.Setup(x => x.GetRateAsync("USD", "CZK", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((decimal?)null);
+        var feature = CreateFeature();
+        var request = ValidBuyRequest(_assetId); // USD currency
+
+        // Act
+        var result = await feature.ExecuteAsync(request);
+
+        // Assert
+        result.IsError.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be("Transaction.FxRateUnavailable");
+    }
+
+    /// <summary>
+    /// TC211: FX provider throws exception — returns 502.
+    /// </summary>
+    [Fact]
+    public async Task TC211_FxProviderThrows_Returns502()
+    {
+        // Arrange
+        _fxProviderMock.Setup(x => x.GetRateAsync("USD", "CZK", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("CNB API unavailable"));
+        var feature = CreateFeature();
+        var request = ValidBuyRequest(_assetId); // USD currency
+
+        // Act
+        var result = await feature.ExecuteAsync(request);
+
+        // Assert
+        result.IsError.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be("Transaction.FxRateUnavailable");
+    }
+
+    #endregion
+
     #region TC043-044: Asset Resolution
 
     /// <summary>
@@ -807,6 +935,8 @@ public class CreateTransactionTests : IDisposable
     public async Task TC043_AssetNotFound_ReturnsNotFoundError()
     {
         // Arrange
+        _fxProviderMock.Setup(x => x.GetRateAsync("USD", "CZK", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(23.1m);
         var feature = CreateFeature();
         var nonExistentAssetId = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
         var request = ValidBuyRequest(nonExistentAssetId);
@@ -828,6 +958,8 @@ public class CreateTransactionTests : IDisposable
     public async Task TC044_AssetOwnedByDifferentUser_ReturnsNotFoundError()
     {
         // Arrange
+        _fxProviderMock.Setup(x => x.GetRateAsync("USD", "CZK", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(23.1m);
         var feature = CreateFeature();
         var otherUsersAssetId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
         var request = ValidBuyRequest(otherUsersAssetId);

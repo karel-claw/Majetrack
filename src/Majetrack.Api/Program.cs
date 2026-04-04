@@ -1,5 +1,6 @@
 using Majetrack.Api.Infrastructure;
 using Majetrack.Features;
+using Majetrack.Infrastructure.ExternalServices.CnbExchangeRateProvider;
 using Majetrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
@@ -18,6 +19,12 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddDbContext<MajetrackDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("MajetrackDb"))
            .UseSnakeCaseNamingConvention());
+
+// Exchange Rate Provider
+builder.Services.Configure<CnbExchangeRateProviderOptions>(
+    builder.Configuration.GetSection(CnbExchangeRateProviderOptions.SectionName));
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<IExchangeRateProvider, CnbExchangeRateProvider>();
 
 // Features
 var featuresAssembly = typeof(IFeatureConfiguration).Assembly;
